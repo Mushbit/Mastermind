@@ -1,0 +1,9 @@
+{
+  "cSpell.enableFiletypes": [
+    "ruby"
+  ],
+  "ruby.format": false,
+  "ruby.lint": {
+  "rubocop": true
+  }
+}
