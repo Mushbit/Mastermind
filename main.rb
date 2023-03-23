@@ -1,3 +1,4 @@
+require 'pry-byebug'
 # Adds codebreaker behavior to Player
 module MastermindCodeMaker
   def create_secret_code
@@ -19,9 +20,13 @@ end
 # Keeps track of game state
 class MastermindBoard
   attr_reader :num_of_players
-def initialize
-  @board_state = Array.new(12) {Array.new(4) {'-'}}
-  # @board_state = board_state # state
+
+  def initialize
+    # code
+    @board_state = Array.new(12) { Array.new(4) { '-' }}.unshift(Array.new(4) { 'X' })
+    @code_break_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
+  end
+
   @num_of_players = 0
 
   class << self
@@ -38,10 +43,27 @@ def initialize
 
   def draw_board
     # code
+    board = create_board(@board_state, @code_break_indicators)
+    p board
+    puts board.map(&:join)
   end
 
   def give_feedback
     # magic here..
+  end
+
+  private
+
+  def create_board(state, indicators)
+    side_bar = []
+    (1..13).each do |i|
+      case i
+      when (1..9) then side_bar.unshift("#{i}  ")
+      when (10..12) then side_bar.unshift("#{i} ")
+      when 13 then side_bar.unshift('   ')
+      end
+    end
+    (0..12).map { |i| [side_bar[i], state[i], ' ', indicators[i]] }
   end
 end
 
