@@ -19,7 +19,8 @@ end
 # Keeps track of game state
 class MastermindBoard
   attr_reader :num_of_players
-
+def initialize
+  @board_state = Array.new(12) {Array.new(4) {'-'}}
   # @board_state = board_state # state
   @num_of_players = 0
 
