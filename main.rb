@@ -1,35 +1,36 @@
 require 'pry-byebug'
 # Adds codebreaker behavior to Player
-module MastermindCodeMaker
+module CodeMaker
   def generate_secret_code
     4.times.map { rand(10) }
-  end
-
-  def give_feedback
-    # correct number + placement
   end
 end
 
 # Adds codeMaker behavior to Player
-module MastermindCodeBreaker
+module CodeBreaker
   def guess_secret_code(guess)
-    MastermindBoard.match_secret_code(guess) # <------- i left off here!!!
+    Board.match_secret_code(guess)
   end
 end
 
 # Keeps track of game state
-class MastermindBoard
+class Board
   attr_reader :num_of_players
+
+  @@num_player = 0
 
   def initialize
     # code
     @board_state = Array.new(12) { Array.new(4) { '-' } }.unshift(Array.new(4) { 'X' })
     @code_break_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
-    @num_of_players = 0
   end
 
-  def add_player
-    self.num_of_players += 1
+  def self.add_player
+    @@num_player += 1
+  end
+
+  def self.player
+    @@num_player
   end
 
   def draw_board
@@ -66,11 +67,13 @@ class Player
   def initialize(name)
     @name = name
     @score = 0
-    @role = MastermindBoard.num_of_players == 1 ? 'codebreaker' : 'codemaker'
-    MastermindBoard.add_player
+    @role = if Board.player == 1
+              'breaker'
+            else
+              'maker'
+            end
+    Board.add_player
   end
-
-  include MastermindCodeBreaker
 end
 
 # Runs the game
@@ -78,7 +81,7 @@ class Game
   def initialize
     # codebreaker = Player.new(name)
     # codemaker = Player.new(name)
-    # board = MastermindBoard.new
+    # board = Board.new
   end
 
   def instructions
