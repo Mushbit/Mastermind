@@ -1,8 +1,8 @@
 require 'pry-byebug'
 # Adds codebreaker behavior to Player
 module MastermindCodeMaker
-  def create_secret_code
-    # randomly select chars
+  def generate_secret_code
+    4.times.map { rand(10) }
   end
 
   def give_feedback
@@ -12,8 +12,8 @@ end
 
 # Adds codeMaker behavior to Player
 module MastermindCodeBreaker
-  def guess_secret_code
-    # code
+  def guess_secret_code(guess)
+    MastermindBoard.match_secret_code(guess) # <------- i left off here!!!
   end
 end
 
@@ -23,22 +23,13 @@ class MastermindBoard
 
   def initialize
     # code
-    @board_state = Array.new(12) { Array.new(4) { '-' }}.unshift(Array.new(4) { 'X' })
+    @board_state = Array.new(12) { Array.new(4) { '-' } }.unshift(Array.new(4) { 'X' })
     @code_break_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
+    @num_of_players = 0
   end
 
-  @num_of_players = 0
-
-  class << self
-    def add_player
-      self.num_of_players += 1
-    end
-  end
-
-  class << self
-    def board_state
-      attr_accessor :board_state
-    end
+  def add_player
+    self.num_of_players += 1
   end
 
   def draw_board
@@ -53,6 +44,9 @@ class MastermindBoard
   end
 
   private
+
+  attr_accessor :board_state, :code_break_indicators
+  attr_writer :num_of_players
 
   def create_board(state, indicators)
     side_bar = []
@@ -73,7 +67,10 @@ class Player
     @name = name
     @score = 0
     @role = MastermindBoard.num_of_players == 1 ? 'codebreaker' : 'codemaker'
+    MastermindBoard.add_player
   end
+
+  include MastermindCodeBreaker
 end
 
 # Runs the game
