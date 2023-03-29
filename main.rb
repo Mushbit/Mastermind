@@ -1,18 +1,4 @@
 require 'pry-byebug'
-# Adds codebreaker behavior to Player
-module CodeMaker
-  def generate_secret_code
-    4.times.map { rand(10) }
-  end
-end
-
-# Adds codeMaker behavior to Player
-module CodeBreaker
-  def guess_secret_code(guess)
-    Board.match_secret_code(guess)
-  end
-end
-
 # Keeps track of game state
 class Board
   attr_reader :num_of_players
@@ -22,7 +8,7 @@ class Board
   def initialize
     # code
     @board_state = Array.new(12) { Array.new(4) { '-' } }.unshift(Array.new(4) { 'X' })
-    @code_break_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
+    @progress_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
   end
 
   def self.add_player
@@ -34,20 +20,36 @@ class Board
   end
 
   def draw_board
-    # code
-    board = create_board(@board_state, @code_break_indicators)
-    p board
-    puts board.map(&:join)
+    puts create_board(@board_state, @progress_indicators).map(&:join)
   end
 
   def give_feedback
     # magic here..
   end
 
+  def generate_secret_code
+    4.times.map { rand(10) }
+  end
+
+  def match_secret_code(guess) # <-------- working on this
+    guess_code = guess
+    secret_code = store_secret_code
+    gc.each_index do |i|
+      next unless gc == sc[i]
+
+      sc[i] = 'V'
+    end
+  end
+
   private
 
   attr_accessor :board_state, :code_break_indicators
   attr_writer :num_of_players
+
+  def store_secret_code(code: false)
+    @secret_code = code unless code
+    @secret_code
+  end
 
   def create_board(state, indicators)
     side_bar = []
@@ -74,6 +76,10 @@ class Player
             end
     Board.add_player
   end
+
+  def guess_secret_code(guess)
+    Board.match_secret_code(guess)
+  end
 end
 
 # Runs the game
@@ -82,6 +88,7 @@ class Game
     # codebreaker = Player.new(name)
     # codemaker = Player.new(name)
     # board = Board.new
+    generate_secret_code
   end
 
   def instructions
