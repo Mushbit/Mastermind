@@ -9,6 +9,7 @@ class Board
     # code
     @board_state = Array.new(12) { Array.new(4) { '-' } }.unshift(Array.new(4) { 'X' })
     @progress_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
+    generate_secret_code
   end
 
   def self.add_player
@@ -28,26 +29,33 @@ class Board
   end
 
   def generate_secret_code
-    4.times.map { rand(10) }
+    store_secret_code(4.times.map { rand(4) })
   end
 
   def match_secret_code(guess) # <-------- working on this
-    guess_code = guess
-    secret_code = store_secret_code
+    gc = guess
+    sc = store_secret_code
     gc.each_index do |i|
-      next unless gc == sc[i]
+      next unless gc[i] == sc[i]
 
       sc[i] = 'V'
+      gc[i] = nil
+    end.compact!
+
+    sc.each_index do |i|
+      if gc.any?(sc[i])
+        sc[i] = 'O'
+        gc[i] = nil
+      end
     end
   end
 
   private
 
-  attr_accessor :board_state, :code_break_indicators
-  attr_writer :num_of_players
+  attr_accessor :board_state, :progress_indicators
 
-  def store_secret_code(code: false)
-    @secret_code = code unless code
+  def store_secret_code(code = 'No code generated')
+    @secret_code = code unless @secret_code
     @secret_code
   end
 
@@ -78,7 +86,7 @@ class Player
   end
 
   def guess_secret_code(guess)
-    Board.match_secret_code(guess)
+    game.match_secret_code(guess)
   end
 end
 
@@ -103,3 +111,6 @@ class Game
     # yep...
   end
 end
+
+# max = Player.new('Max')
+game = Board.new
