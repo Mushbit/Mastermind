@@ -6,10 +6,11 @@ class Board
   @@num_player = 0
 
   def initialize
-    # code
     @board_state = Array.new(12) { Array.new(4) { '-' } }.unshift(Array.new(4) { 'X' })
     @progress_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
-    generate_secret_code
+    # is 1 because
+    @attempt_iterator = -1
+    generate_rand_code
   end
 
   def self.add_player
@@ -20,6 +21,7 @@ class Board
     @@num_player
   end
 
+
   def draw_board
     puts create_board(@board_state, @progress_indicators).map(&:join)
   end
@@ -28,13 +30,16 @@ class Board
     # magic here..
   end
 
-  def generate_secret_code
-    store_secret_code(4.times.map { rand(4) })
+  def generate_rand_code
+    store_code(4.times.map { rand(7) })
   end
 
-  def match_secret_code(guess) # <-------- working on this
+  def attempt_break(guess)
+    # #map is being used to change object_id
+    update_board_state(guess.map(&:to_s))
     gc = guess
-    sc = store_secret_code
+    sc = store_code.map(&:to_i)
+
     gc.each_index do |i|
       next unless gc[i] == sc[i]
 
@@ -42,21 +47,43 @@ class Board
       gc[i] = nil
     end.compact!
 
+    near_match(gc, sc)
+    update_indicator_state(sc)
+    draw_board
+  end
+
+  def near_match(gc, sc)
     sc.each_index do |i|
       if gc.any?(sc[i])
+        gc.delete_at(gc.index(sc[i]))
         sc[i] = 'O'
-        gc[i] = nil
       end
     end
   end
 
+  def update_board_state(gc)
+    board_state[attempt_iterator] = gc
+  end
+
+  def update_indicator_state(sc)
+    progress_indicators[attempt_iterator][0] = 0
+    progress_indicators[attempt_iterator][1] = 0
+
+    sc.tally.each do |k, v|
+      progress_indicators[attempt_iterator][0] = v if k == 'V'
+      progress_indicators[attempt_iterator][1] = v if k == 'O'
+    end
+    self.attempt_iterator -= 1
+
+  end
+
   private
 
-  attr_accessor :board_state, :progress_indicators
+  attr_accessor :board_state, :progress_indicators, :attempt_iterator
 
-  def store_secret_code(code = 'No code generated')
+  def store_code(code = 'No code generated')
     @secret_code = code unless @secret_code
-    @secret_code
+    @secret_code # Perhaps change to class variable making @@secret_code false on initialize
   end
 
   def create_board(state, indicators)
@@ -86,7 +113,8 @@ class Player
   end
 
   def guess_secret_code(guess)
-    game.match_secret_code(guess)
+    # Needs to pass an arrray
+    game.attempt_break(guess)
   end
 end
 
@@ -96,7 +124,7 @@ class Game
     # codebreaker = Player.new(name)
     # codemaker = Player.new(name)
     # board = Board.new
-    generate_secret_code
+    generate_rand_code
   end
 
   def instructions

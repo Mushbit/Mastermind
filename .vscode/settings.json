@@ -4,6 +4,6 @@
   ],
   "ruby.format": false,
   "ruby.lint": {
-  "rubocop": true
+  "rubocop": false
   }
 }
