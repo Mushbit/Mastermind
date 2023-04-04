@@ -1,8 +1,6 @@
 require 'pry-byebug'
 # Keeps track of game state
 class Board
-  attr_reader :num_of_players
-
   @@num_player = 0
 
   def initialize
@@ -11,6 +9,7 @@ class Board
     # is 1 because
     @attempt_iterator = -1
     @@secret_code = false
+    generate_rand_code
   end
 
   def self.add_player
@@ -79,8 +78,8 @@ class Board
   attr_accessor :board_state, :progress_indicators, :attempt_iterator
 
   def store_code(code = "No code generated")
-    @@secret_code = code unless @@secret_code
-    @@secret_code # Perhaps change to class variable making @@secret_code false on initialize
+    puts @@secret_code = code unless @@secret_code
+    @@secret_code
   end
 
   def create_board(state, indicators)
@@ -109,19 +108,47 @@ class Player
     Board.add_player
   end
 
-  def guess_secret_code(guess)
-    # Needs to pass an arrray
-    game.attempt_break(guess)
-  end
 end
 
 # Runs the game
 class Game
+  attr_accessor :player1
   def initialize
-    # codebreaker = Player.new(name)
-    # codemaker = Player.new(name)
-    # board = Board.new
+    puts 'Please type in the name of the one who breaks code:'
+    @player1 = Player.new(gets.chomp)
+    choose_players
+    @player2 = Player.new(gets.chomp)
+    game = Board.new
     generate_rand_code
+  end
+
+  def choose_players
+    puts 'Will your nemesis be of flesh and blood?'
+    prompt = gets.chomp
+    if  prompt.match(/y/i)
+      puts 'Codemaker, reveal your name/alias:'
+      Player.new(gets.chomp)
+    else
+      name_cp = ['CH405', '470M', 'C1PH3R', 'D0C', '4C3', 'D00M'].sample
+      puts "hahaa, so you want to take me on?!\n #{name_cp} hereby accepts your challenge!"
+      Player.new(name_cp)
+    end
+  end
+
+  def guess_secret_code
+    puts 'Go ahead and guess the code:'
+    retries = 1
+    begin
+      game.attempt_break(gets.chomp.split('').map(&:to_i))
+    rescue => exception
+      if retries > 0
+      puts "Beep Boop, erroneous input! Try again..."
+      else
+        puts "Beep Boop, erroneous input! Try again...again\n Just write down 4 numbers between 0 and 7 \n Duplicate numbers are allowed"
+      end
+      retry
+    end
+
   end
 
   def instructions
@@ -139,7 +166,6 @@ end
 
 p max = Player.new('Max')
 p game = Board.new
-p game.generate_rand_code
 p game
 game.attempt_break([1, 2, 3, 4])
 game.attempt_break([1, 1, 3, 5])
