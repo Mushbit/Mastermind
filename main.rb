@@ -10,7 +10,7 @@ class Board
     @progress_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
     # is 1 because
     @attempt_iterator = -1
-    generate_rand_code
+    @@secret_code = false
   end
 
   def self.add_player
@@ -21,13 +21,10 @@ class Board
     @@num_player
   end
 
-
   def draw_board
+    puts "\n"
     puts create_board(@board_state, @progress_indicators).map(&:join)
-  end
-
-  def give_feedback
-    # magic here..
+    puts "\n"
   end
 
   def generate_rand_code
@@ -81,9 +78,9 @@ class Board
 
   attr_accessor :board_state, :progress_indicators, :attempt_iterator
 
-  def store_code(code = 'No code generated')
-    @secret_code = code unless @secret_code
-    @secret_code # Perhaps change to class variable making @@secret_code false on initialize
+  def store_code(code = "No code generated")
+    @@secret_code = code unless @@secret_code
+    @@secret_code # Perhaps change to class variable making @@secret_code false on initialize
   end
 
   def create_board(state, indicators)
@@ -140,5 +137,10 @@ class Game
   end
 end
 
-# max = Player.new('Max')
-game = Board.new
+p max = Player.new('Max')
+p game = Board.new
+p game.generate_rand_code
+p game
+game.attempt_break([1, 2, 3, 4])
+game.attempt_break([1, 1, 3, 5])
+p game
