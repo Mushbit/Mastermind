@@ -6,7 +6,6 @@ class Board
   def initialize
     @board_state = Array.new(12) { Array.new(4) { '-' } }.unshift(Array.new(4) { 'X' })
     @progress_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
-    # is 1 because
     @attempt_iterator = -1
     @@secret_code = false
   end
@@ -29,10 +28,9 @@ class Board
     store_code(4.times.map { rand(7) })
   end
 
-  def attempt_break(guess)
+  def attempt_break(gc)
     # #map is being used to change object_id
-    update_board_state(guess.map(&:to_s))
-    gc = guess
+    update_board_state(gc.map(&:to_s))
     sc = store_code.map(&:to_i)
 
     gc.each_index do |i|
@@ -43,8 +41,9 @@ class Board
     end.compact!
 
     near_match(gc, sc)
-    update_indicator_state(sc)
+    v_count = update_indicator_state(sc)
     draw_board
+    [v_count, self.attempt_iterator -= 1]
   end
 
   def near_match(gc, sc)
@@ -68,8 +67,6 @@ class Board
       progress_indicators[attempt_iterator][0] = v if k == 'V'
       progress_indicators[attempt_iterator][1] = v if k == 'O'
     end
-    self.attempt_iterator -= 1
-
   end
 
   private
@@ -100,14 +97,13 @@ class Player
   def initialize(name)
     @name = name
     @score = 0
-    @role = if Board.player == 1
-              'breaker'
-            else
-              'maker'
-            end
+    @role = if Board.player == 0
+      puts 'maker'
+    else
+      puts 'breaker'
+    end
     Board.add_player
   end
-
 end
 
 # Runs the game
@@ -133,54 +129,73 @@ class Game
     end
   end
 
-  def guess_secret_code
-    puts 'Go ahead and guess the code:'
-    retries = 2
-    begin
-      @game.attempt_break(gets.chomp.split('').map(&:to_i))
-    rescue => exception
-      if retries > 0
-      puts " Beep Boop, erroneous input! Reiterate, please..."
-      retry
-      else
-        puts " Beep Boop, erroneous input! Your persistent passing of inaccurate code is exasperating!\n\n Just write down 4 numbers between 0 and 7. \n Same numbers are allowed"
-        retry
-      end
-    end
-
+  def run_game
+    game.generate_rand_code
+    game.draw_board
+    instructions
   end
 
   def instructions
-    game.draw_board
-    puts " Type in 4 numbers ranging from 0 - 7.\n\n The number that appears underneath 'V' indicates that one of\n the characters is in the correct possition.\n\n The number that appears underneath 'O' indicate that the\n character is pressent in the code but does not sit in the correct possition.\n The same numbers can be placed more than once.\n\n secret code example: 1121\n Code break example: 2416\n\n 'V' = 0 because no number is place correctly.\n 'O' = 2 and not 4 because 1 only counts once like 2 only counts once"
-    player = player1.name.match('breaker') ? self.player1 : self.player2
+    puts " Type in 4 numbers ranging from 0 - 6.\n\n The number that appears underneath 'V' indicates that one of\n the characters is in the correct possition.\n\n The number that appears underneath 'O' indicate that the\n character is pressent in the code but does not sit in the correct possition.\n\n The same numbers can be placed more than once.\n\n Secret code example: 1121\n Code break example:  2416\n\n 'V' = 0 because no number is placed correctly.\n 'O' = 2 and not 4 because 1 only counts once like 2 only counts once"
+    player = player1.role.match?(/breaker/) ? self.player1 : self.player2
     play_round(player)
   end
 
-
-
   def play_round(player)
-    puts "Type in your best guess:"
+    puts "Go ahead, #{player.name}, and guess the code:"
 
-    #generate_code
+    win_stat = []
+    retries = 2
+    begin
+      win_stat = game.attempt_break(gets.chomp.split('').map(&:to_i))
+    rescue => exception
+      if retries > 0
+        puts " Beep Boop, erroneous input! Reiterate, please..."
+        retry
+      else
+        puts " Beep Boop, erroneous input! Your persistent passing of inaccurate code is exasperating!\n\n Therefor I will reassign your name state to be: #{player.name = "Nincompoop"}\n\n Just write down 4 numbers between 0 and 7. \n Same numbers are allowed"
+        retry
+      end
+    end
+    check_win(player, win_stat)
+
   end
 
-  def error_handling
-    # yep...
+  def check_win(player, win_stat)
+    if win_stat[0] > 3
+      maker_win
+    elsif win_stat[1] < -13
+      breaker_win
+    else
+      play_round(player)
+    end
+  end
+
+  def maker_win
+    puts " You beat me?! I am not worth the blessing of the Omnissiah.."
+  end
+
+  def breaker_win
+    puts " Opponent obliteration successful!"
   end
 end
 
-def run_game
+def setup_game
   puts 'Want to test your mettle in a game of Mastermind? Y/n'
-  return unless gets.chomp.match(/y/i)
+  return unless gets.chomp.match?(/y/i)
 
   puts 'Please type in the name of he who breaks code:'
   name1 = gets.chomp
-  puts 'All hail the omnisia, for the flesh is weak'
-  mastermind = Game.new(name1)
-  mastermind.instructions
+  puts mastermind = Game.new(name1)
+  puts 'All hail the omnisia, for the flesh is weak! press enter'
+  gets.chomp
+  mastermind.run_game
+  reset_game(name1)
 end
 
-def reset_game
-  # code...
+def reset_game(name1)
+  puts "Want to try again #{name1}? Y/n"
+  return unless gets.chomp.match?(/y/i)
+  mastermind = Game.new(name1)
+  reset_game(name1)
 end
