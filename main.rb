@@ -9,7 +9,6 @@ class Board
     # is 1 because
     @attempt_iterator = -1
     @@secret_code = false
-    generate_rand_code
   end
 
   def self.add_player
@@ -97,6 +96,7 @@ end
 
 # Player template
 class Player
+  attr_accessor :name
   def initialize(name)
     @name = name
     @score = 0
@@ -112,51 +112,57 @@ end
 
 # Runs the game
 class Game
-  attr_accessor :player1
-  def initialize
-    puts 'Please type in the name of the one who breaks code:'
-    @player1 = Player.new(gets.chomp)
-    choose_players
-    @player2 = Player.new(gets.chomp)
-    game = Board.new
-    generate_rand_code
+  attr_accessor :player1, :player2, :game
+
+  def initialize(name1)
+    @game = Board.new
+    @player1 = Player.new(name1)
+    @player2 = Player.new(choose_players)
   end
 
   def choose_players
-    puts 'Will your nemesis be of flesh and blood?'
+    puts ' Will your nemesis be of flesh and blood? Y/n'
     prompt = gets.chomp
     if  prompt.match(/y/i)
-      puts 'Codemaker, reveal your name/alias:'
-      Player.new(gets.chomp)
+      puts ' Codemaker, reveal your name/alias:'
+      gets.chomp
     else
       name_cp = ['CH405', '470M', 'C1PH3R', 'D0C', '4C3', 'D00M'].sample
-      puts "hahaa, so you want to take me on?!\n #{name_cp} hereby accepts your challenge!"
-      Player.new(name_cp)
+      puts " hahaa, so you want to take on a computational marvel like myself?!\n #{name_cp} hereby accepts your challenge!"
+      name_cp
     end
   end
 
   def guess_secret_code
     puts 'Go ahead and guess the code:'
-    retries = 1
+    retries = 2
     begin
-      game.attempt_break(gets.chomp.split('').map(&:to_i))
+      @game.attempt_break(gets.chomp.split('').map(&:to_i))
     rescue => exception
       if retries > 0
-      puts "Beep Boop, erroneous input! Try again..."
-      else
-        puts "Beep Boop, erroneous input! Try again...again\n Just write down 4 numbers between 0 and 7 \n Duplicate numbers are allowed"
-      end
+      puts " Beep Boop, erroneous input! Reiterate, please..."
       retry
+      else
+        puts " Beep Boop, erroneous input! Your persistent passing of inaccurate code is exasperating!\n\n Just write down 4 numbers between 0 and 7. \n Same numbers are allowed"
+        retry
+      end
     end
 
   end
 
   def instructions
-    # instruction magic...
+    game.draw_board
+    puts " Type in 4 numbers ranging from 0 - 7.\n\n The number that appears underneath 'V' indicates that one of\n the characters is in the correct possition.\n\n The number that appears underneath 'O' indicate that the\n character is pressent in the code but does not sit in the correct possition.\n The same numbers can be placed more than once.\n\n secret code example: 1121\n Code break example: 2416\n\n 'V' = 0 because no number is place correctly.\n 'O' = 2 and not 4 because 1 only counts once like 2 only counts once"
+    player = player1.name.match('breaker') ? self.player1 : self.player2
+    play_round(player)
   end
 
-  def play_round
-    # player round type of code..
+
+
+  def play_round(player)
+    puts "Type in your best guess:"
+
+    #generate_code
   end
 
   def error_handling
@@ -164,9 +170,17 @@ class Game
   end
 end
 
-p max = Player.new('Max')
-p game = Board.new
-p game
-game.attempt_break([1, 2, 3, 4])
-game.attempt_break([1, 1, 3, 5])
-p game
+def run_game
+  puts 'Want to test your mettle in a game of Mastermind? Y/n'
+  return unless gets.chomp.match(/y/i)
+
+  puts 'Please type in the name of he who breaks code:'
+  name1 = gets.chomp
+  puts 'All hail the omnisia, for the flesh is weak'
+  mastermind = Game.new(name1)
+  mastermind.instructions
+end
+
+def reset_game
+  # code...
+end
