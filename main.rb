@@ -25,7 +25,7 @@ class Board
   end
 
   def generate_rand_code
-    store_code(4.times.map { rand(7) })
+    store_code(Array.new(4) { rand(6) + 1 })
   end
 
   def attempt_break(gc)
@@ -67,6 +67,7 @@ class Board
       progress_indicators[attempt_iterator][0] = v if k == 'V'
       progress_indicators[attempt_iterator][1] = v if k == 'O'
     end
+    progress_indicators[attempt_iterator][0]
   end
 
   private
@@ -94,15 +95,16 @@ end
 # Player template
 class Player
   attr_accessor :name
-  def initialize(name)
+  attr_reader :role, :type
+  def initialize(name, type)
     @name = name
     @score = 0
     @role = if Board.player == 0
-      puts 'maker'
+      'breaker'
     else
-      puts 'breaker'
+      'maker'
     end
-    Board.add_player
+    @type = type
   end
 end
 
@@ -112,20 +114,21 @@ class Game
 
   def initialize(name1)
     @game = Board.new
-    @player1 = Player.new(name1)
-    @player2 = Player.new(choose_players)
+    @player1 = Player.new(name1, 'user_character')
+    @player2 = choose_players
   end
 
   def choose_players
     puts ' Will your nemesis be of flesh and blood? Y/n'
-    prompt = gets.chomp
+    prompt = "n" # gets.chomp
     if  prompt.match(/y/i)
       puts ' Codemaker, reveal your name/alias:'
-      gets.chomp
+      Player.new(gets.chomp, 'user_character')
+      Board.add_player
     else
       name_cp = ['CH405', '470M', 'C1PH3R', 'D0C', '4C3', 'D00M'].sample
       puts " hahaa, so you want to take on a computational marvel like myself?!\n #{name_cp} hereby accepts your challenge!"
-      name_cp
+      Player.new(name_cp, 'non_user_character')
     end
   end
 
@@ -136,13 +139,13 @@ class Game
   end
 
   def instructions
-    puts " Type in 4 numbers ranging from 0 - 6.\n\n The number that appears underneath 'V' indicates that one of\n the characters is in the correct possition.\n\n The number that appears underneath 'O' indicate that the\n character is pressent in the code but does not sit in the correct possition.\n\n The same numbers can be placed more than once.\n\n Secret code example: 1121\n Code break example:  2416\n\n 'V' = 0 because no number is placed correctly.\n 'O' = 2 and not 4 because 1 only counts once like 2 only counts once"
+    puts " You will have 12 turns to match the code.\n\n Type in 4 numbers ranging from 1 - 6.\n\n The number that appears underneath 'V' indicates that one of\n the characters is in the correct possition.\n\n The number that appears underneath 'O' indicate that the\n character is pressent in the code but does not sit in the correct possition.\n\n The same numbers can be placed more than once.\n\n Secret code example: 1121\n Code break example:  2416\n\n 'V' = 0 because no number is placed correctly.\n 'O' = 2 and not 4 because 1 only counts once like 2 only counts once"
     player = player1.role.match?(/breaker/) ? self.player1 : self.player2
     play_round(player)
   end
 
   def play_round(player)
-    puts "Go ahead, #{player.name}, and guess the code:"
+    puts " Go ahead, #{player.name}, and guess the code:\n"
 
     win_stat = []
     retries = 2
@@ -172,11 +175,11 @@ class Game
   end
 
   def maker_win
-    puts " You beat me?! I am not worth the blessing of the Omnissiah.."
+    puts " You beat me?! I am not worth the blessing of the Omnissiah..\n"
   end
 
   def breaker_win
-    puts " Opponent obliteration successful!"
+    puts " Opponent obliteration successful!\n"
   end
 end
 
@@ -187,15 +190,16 @@ def setup_game
   puts 'Please type in the name of he who breaks code:'
   name1 = gets.chomp
   puts mastermind = Game.new(name1)
-  puts 'All hail the omnisia, for the flesh is weak! press enter'
+  puts ' All hail the omnisia, for the flesh is weak!\n Press enter to begin'
   gets.chomp
   mastermind.run_game
   reset_game(name1)
 end
 
 def reset_game(name1)
-  puts "Want to try again #{name1}? Y/n"
+  puts " Want to try again #{name1}? Y/n"
   return unless gets.chomp.match?(/y/i)
   mastermind = Game.new(name1)
+  mastermind.run_game
   reset_game(name1)
 end
