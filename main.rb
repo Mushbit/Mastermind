@@ -1,5 +1,5 @@
 require 'pry-byebug'
-# Keeps track of game state
+# Stores and updates game state
 class Board
   @@num_player = 0
 
@@ -7,11 +7,15 @@ class Board
     @board_state = Array.new(12) { Array.new(4) { '-' } }.unshift(Array.new(4) { 'X' })
     @progress_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
     @attempt_iterator = -1
-    @@secret_code = false
+    @@maker_code = false
   end
 
   def self.add_player
     @@num_player += 1
+  end
+
+  def self.remove_player
+    @@num_player -= 1
   end
 
   def self.player
@@ -28,42 +32,51 @@ class Board
     store_code(Array.new(4) { rand(6) + 1 })
   end
 
-  def attempt_break(gc)
-    # #map is being used to change object_id
-    update_board_state(gc.map(&:to_s))
-    sc = store_code.map(&:to_i)
-
-    gc.each_index do |i|
-      next unless gc[i] == sc[i]
-
-      sc[i] = 'V'
-      gc[i] = nil
-    end.compact!
-
-    near_match(gc, sc)
-    v_count = update_indicator_state(sc)
-    draw_board
-    [v_count, self.attempt_iterator -= 1]
+  def pass_maker_code(maker_code)
+    store_code(maker_code)
+    return
   end
 
-  def near_match(gc, sc)
-    sc.each_index do |i|
-      if gc.any?(sc[i])
-        gc.delete_at(gc.index(sc[i]))
-        sc[i] = 'O'
+  def print_maker_code
+    store_code.join('')
+  end
+
+  def attempt_break(breaker_code)
+    # #map is being used to change object_id
+    update_board_state(breaker_code.map(&:to_s))
+    maker_code = store_code.map(&:to_i)
+
+    breaker_code.each_index do |i|
+      next unless breaker_code[i] == maker_code[i]
+
+      maker_code[i] = 'V'
+      breaker_code[i] = nil
+    end.compact!
+
+    near_match(breaker_code, maker_code)
+    count_matching_chars = update_indicator_state(maker_code)
+    draw_board
+    [count_matching_chars, self.attempt_iterator -= 1]
+  end
+
+  def near_match(breaker_code, maker_code)
+    maker_code.each_index do |i|
+      if breaker_code.any?(maker_code[i])
+        breaker_code.delete_at(breaker_code.index(maker_code[i]))
+        maker_code[i] = 'O'
       end
     end
   end
 
-  def update_board_state(gc)
-    board_state[attempt_iterator] = gc
+  def update_board_state(breaker_code)
+    board_state[attempt_iterator] = breaker_code
   end
 
-  def update_indicator_state(sc)
+  def update_indicator_state(maker_code)
     progress_indicators[attempt_iterator][0] = 0
     progress_indicators[attempt_iterator][1] = 0
 
-    sc.tally.each do |k, v|
+    maker_code.tally.each do |k, v|
       progress_indicators[attempt_iterator][0] = v if k == 'V'
       progress_indicators[attempt_iterator][1] = v if k == 'O'
     end
@@ -75,8 +88,8 @@ class Board
   attr_accessor :board_state, :progress_indicators, :attempt_iterator
 
   def store_code(code = "No code generated")
-    puts @@secret_code = code unless @@secret_code
-    @@secret_code
+    @@maker_code = code unless @@maker_code
+    @@maker_code
   end
 
   def create_board(state, indicators)
@@ -99,11 +112,7 @@ class Player
   def initialize(name, type)
     @name = name
     @score = 0
-    @role = if Board.player == 0
-      'breaker'
-    else
-      'maker'
-    end
+    @role = Board.player == 0 ? 'breaker' : 'maker'
     @type = type
   end
 end
@@ -112,94 +121,118 @@ end
 class Game
   attr_accessor :player1, :player2, :game
 
-  def initialize(name1)
+  def initialize(name1, name2 = false)
     @game = Board.new
-    @player1 = Player.new(name1, 'user_character')
-    @player2 = choose_players
+    @player1 = Player.new(name1, 'player_character')
+    @player2 = name2 ? Player.new(name2, 'player_character') : choose_players
   end
 
   def choose_players
-    puts ' Will your nemesis be of flesh and blood? Y/n'
-    prompt = "n" # gets.chomp
+    Board.add_player
+    puts "\n Will your nemesis be of flesh and blood? Y/n\n"
+    prompt = gets.chomp
     if  prompt.match(/y/i)
-      puts ' Codemaker, reveal your name/alias:'
-      Player.new(gets.chomp, 'user_character')
-      Board.add_player
+      puts "\n Codemaker, reveal your name/alias:"
+      Player.new(gets.chomp, 'player_character')
     else
-      name_cp = ['CH405', '470M', 'C1PH3R', 'D0C', '4C3', 'D00M'].sample
-      puts " hahaa, so you want to take on a computational marvel like myself?!\n #{name_cp} hereby accepts your challenge!"
-      Player.new(name_cp, 'non_user_character')
+    name_npc = ['CH405', '470M', 'C1PH3R', 'D0C', '4C3', 'D00M'].sample
+      puts "\n hahaa, so you want to take on a computational marvel like myself?!\n #{name_npc} hereby accepts your challenge!\n"
+      npc = Player.new(name_npc, 'non_player_character')
+      Board.remove_player
+      npc
     end
   end
 
-  def run_game
-    game.generate_rand_code
+  def setup_game
+    maker = ''
+    breaker = if player1.role.match?(/breaker/)
+                    maker = self.player2
+                    self.player1
+                  else
+                    maker = self.player1
+                    self.player2
+                  end
     game.draw_board
-    instructions
+
+    if player2.type == 'non_player_character'
+      game.generate_rand_code
+      instructions
+    elsif player2.type == 'player_character'
+      instructions
+      puts "\n Pick the secret code #{maker.name}:\n"
+      game.pass_maker_code(input_code(maker))
+    end
+    play_round(breaker)
   end
 
   def instructions
-    puts " You will have 12 turns to match the code.\n\n Type in 4 numbers ranging from 1 - 6.\n\n The number that appears underneath 'V' indicates that one of\n the characters is in the correct possition.\n\n The number that appears underneath 'O' indicate that the\n character is pressent in the code but does not sit in the correct possition.\n\n The same numbers can be placed more than once.\n\n Secret code example: 1121\n Code break example:  2416\n\n 'V' = 0 because no number is placed correctly.\n 'O' = 2 and not 4 because 1 only counts once like 2 only counts once"
-    player = player1.role.match?(/breaker/) ? self.player1 : self.player2
-    play_round(player)
+    puts "\n You will have 12 turns to match the code.\n\n Type in 4 numbers ranging from 1 - 6.\n\n The number that appears underneath 'V' indicates that one of\n the characters is in the correct possition.\n\n The number that appears underneath 'O' indicate that the\n character is pressent in the code but does not sit in the correct possition.\n\n The same numbers can be placed more than once.\n\n Secret code example: 1121\n Code break example:  2416\n\n 'V' = 0 because no number is placed correctly.\n 'O' = 2 and not 4 because 1 only counts once like 2 only counts once\n"
   end
 
-  def play_round(player)
-    puts " Go ahead, #{player.name}, and guess the code:\n"
+  def play_round(breaker)
+    puts "\n Go ahead, #{breaker.name}, and guess the code:\n"
+    input_data= input_code(breaker)
+    attempt_data = game.attempt_break(input_data)
+    check_win(breaker, attempt_data)
+  end
 
-    win_stat = []
+  def input_code(current_player)
+    input = []
     retries = 2
     begin
-      win_stat = game.attempt_break(gets.chomp.split('').map(&:to_i))
+      input = gets.chomp.match(/^[1-6]{4}$/)[0].split('').map(&:to_i)
     rescue => exception
       if retries > 0
-        puts " Beep Boop, erroneous input! Reiterate, please..."
+        puts "\n Beep Boop, erroneous input! Reiterate, please...\n"
+        retries -= 1
         retry
       else
-        puts " Beep Boop, erroneous input! Your persistent passing of inaccurate code is exasperating!\n\n Therefor I will reassign your name state to be: #{player.name = "Nincompoop"}\n\n Just write down 4 numbers between 0 and 7. \n Same numbers are allowed"
+        puts "\n Beep Boop, erroneous input! Your persistent passing of inaccurate code is exasperating!\n Therefor I will reassign the value of your name state. \n\n Just write down 4 numbers between 1 and 6, #{current_player.name = "Nincompoop"}. \n Same numbers are allowed\n"
         retry
       end
     end
-    check_win(player, win_stat)
-
   end
 
-  def check_win(player, win_stat)
-    if win_stat[0] > 3
+  def check_win(breaker, attempt_data)
+    if attempt_data[0] > 3
       maker_win
-    elsif win_stat[1] < -13
+    elsif attempt_data[1] < -12
       breaker_win
     else
-      play_round(player)
+      play_round(breaker)
     end
   end
 
   def maker_win
-    puts " You beat me?! I am not worth the blessing of the Omnissiah..\n"
+    puts "\n You beat me?! I am not worth the blessing of the Omnissiah..\n\n The secret code was: #{game.print_maker_code}\n"
   end
 
   def breaker_win
-    puts " Opponent obliteration successful!\n"
+    puts "\n Gg!\n\n The secret code was: #{game.print_maker_code}\n"
   end
 end
 
 def setup_game
-  puts 'Want to test your mettle in a game of Mastermind? Y/n'
+  puts "\n Want to test your mettle in a game of Mastermind? Y/n\n"
   return unless gets.chomp.match?(/y/i)
 
-  puts 'Please type in the name of he who breaks code:'
+  puts "\n Please type in the name of he who breaks code:\n"
   name1 = gets.chomp
-  puts mastermind = Game.new(name1)
-  puts ' All hail the omnisia, for the flesh is weak!\n Press enter to begin'
+  mastermind = Game.new(name1)
+
+  name2 = mastermind.player2.name unless mastermind.player2.type == 'non_player_character'
+  puts "\n Press enter to begin"
   gets.chomp
-  mastermind.run_game
-  reset_game(name1)
+  mastermind.setup_game
+  reset_game(name1, name2)
 end
 
-def reset_game(name1)
-  puts " Want to try again #{name1}? Y/n"
+def reset_game(name1, name2 = false)
+  puts " Want to play again? Y/n"
   return unless gets.chomp.match?(/y/i)
-  mastermind = Game.new(name1)
-  mastermind.run_game
-  reset_game(name1)
+  mastermind = Game.new(name1, name2)
+  puts "\n Press enter to begin"
+  gets.chomp
+  mastermind.setup_game
+  reset_game(name1, name2)
 end
