@@ -3,8 +3,11 @@ require 'pry-byebug'
 class Board
   @@num_player = 0
 
-  def initialize
-    @board_state = Array.new(12) { Array.new(4) { '-' } }.unshift(Array.new(4) { 'X' })
+  attr_reader :xpert_mode
+
+  def initialize(xpert_mode)
+    @xpert_mode = xpert_mode
+    @board_state = Array.new(12) { Array.new(@xpert_mode ? 5 : 4) { '-' } }.unshift(Array.new(@xpert_mode ? 5 : 4) { 'X' })
     @progress_indicators = Array.new(12) { Array.new(2) { '-' } }.unshift(%w[V O])
     @attempt_iterator = -1
     @@maker_code = false
@@ -29,7 +32,7 @@ class Board
   end
 
   def generate_rand_code
-    store_code(Array.new(4) { rand(6) + 1 })
+    store_code(Array.new(@xpert_mode ? 5 : 4) { rand(@xpert_mode ? 8 : 6) + 1 })
   end
 
   def pass_maker_code(maker_code)
@@ -122,7 +125,8 @@ class Game
   attr_accessor :player1, :player2, :game
 
   def initialize(name1, name2 = false)
-    @game = Board.new
+    puts "\nFancy a challenge and want to try xpert mode? Y/n\n"
+    @game = Board.new (gets.chomp.match?(/y/i))
     @player1 = Player.new(name1, 'player_character')
     @player2 = name2 ? Player.new(name2, 'player_character') : choose_players
   end
@@ -166,7 +170,7 @@ class Game
   end
 
   def instructions
-    puts "\n You will have 12 turns to match the code.\n\n Type in 4 numbers ranging from 1 - 6.\n\n The number that appears underneath 'V' indicates that one of\n the characters is in the correct possition.\n\n The number that appears underneath 'O' indicate that the\n character is pressent in the code but does not sit in the correct possition.\n\n The same numbers can be placed more than once.\n\n Secret code example: 1121\n Code break example:  2416\n\n 'V' = 0 because no number is placed correctly.\n 'O' = 2 and not 4 because 1 only counts once like 2 only counts once\n"
+    puts "\n You will have 12 turns to match the code.\n\n Type in #{game.xpert_mode ? '5' : '4'} numbers ranging from 1 - #{game.xpert_mode ? '8' : '6'}.\n\n The number that appears underneath 'V' indicates that one of\n the characters is in the correct possition.\n\n The number that appears underneath 'O' indicate that the\n character is pressent in the code but does not sit in the correct possition.\n\n The same numbers can be placed more than once.\n\n Secret code example: #{game.xpert_mode ? '11215' : '1121'}\n Code break example:  #{game.xpert_mode ? '27168' : '2416'}\n\n 'V' = 0 because no number is placed correctly.\n 'O' = 2 and not 4 because 1 only counts once like 2 only counts once\n"
   end
 
   def play_round(breaker)
@@ -180,21 +184,22 @@ class Game
     input = []
     retries = 2
     begin
-      input = gets.chomp.match(/^[1-6]{4}$/)[0].split('').map(&:to_i)
+      input = game.xpert_mode ? gets.chomp.match(/^[1-8]{5}$/)[0] : gets.chomp.match(/^[1-6]{4}$/)[0]
+      input.split('').map(&:to_i)
     rescue => exception
       if retries > 0
         puts "\n Beep Boop, erroneous input! Reiterate, please...\n"
         retries -= 1
         retry
       else
-        puts "\n Beep Boop, erroneous input! Your persistent passing of inaccurate code is exasperating!\n Therefor I will reassign the value of your name state. \n\n Just write down 4 numbers between 1 and 6, #{current_player.name = "Nincompoop"}. \n Same numbers are allowed\n"
+        puts "\n Beep Boop, erroneous input! Your persistent passing of inaccurate code is exasperating!\n Therefor I will reassign the value of your name state. \n\n Just write down #{game.xpert_mode ? '5' : '4'} numbers between 1 and #{game.xpert_mode ? '8' : '6'}, #{current_player.name = "Nincompoop"}. \n Same numbers are allowed\n"
         retry
       end
     end
   end
 
   def check_win(breaker, attempt_data)
-    if attempt_data[0] > 3
+    if attempt_data[0] > (game.xpert_mode ? 4 : 3)
       maker_win
     elsif attempt_data[1] < -12
       breaker_win
