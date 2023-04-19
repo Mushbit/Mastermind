@@ -37,7 +37,7 @@ class Board
 
   def pass_maker_code(maker_code)
     store_code(maker_code)
-    return
+    nil
   end
 
   def print_maker_code
@@ -90,8 +90,8 @@ class Board
 
   attr_accessor :board_state, :progress_indicators, :attempt_iterator
 
-  def store_code(code = "No code generated")
-    @@maker_code = code unless @@maker_code
+  def store_code(code = 'No code generated')
+    @@maker_code ||= code
     @@maker_code
   end
 
@@ -112,10 +112,11 @@ end
 class Player
   attr_accessor :name
   attr_reader :role, :type
+
   def initialize(name, type)
     @name = name
     @score = 0
-    @role = Board.player == 0 ? 'breaker' : 'maker'
+    @role = Board.player.even? ? 'breaker' : 'maker'
     @type = type
   end
 end
@@ -126,20 +127,20 @@ class Game
 
   def initialize(name1, name2 = false)
     puts "\nFancy a challenge and want to try xpert mode? Y/n\n"
-    @game = Board.new (gets.chomp.match?(/y/i))
+    @game = Board.new(gets.chomp.match?(/y/i))
     @player1 = Player.new(name1, 'player_character')
+    Board.add_player
     @player2 = name2 ? Player.new(name2, 'player_character') : choose_players
   end
 
   def choose_players
-    Board.add_player
     puts "\n Will your nemesis be of flesh and blood? Y/n\n"
     prompt = gets.chomp
     if  prompt.match(/y/i)
       puts "\n Codemaker, reveal your name/alias:"
       Player.new(gets.chomp, 'player_character')
     else
-    name_npc = ['CH405', '470M', 'C1PH3R', 'D0C', '4C3', 'D00M'].sample
+      name_npc = %w[CH405 470M C1PH3R D0C 4C3 D00M].sample
       puts "\n hahaa, so you want to take on a computational marvel like myself?!\n #{name_npc} hereby accepts your challenge!\n"
       npc = Player.new(name_npc, 'non_player_character')
       Board.remove_player
@@ -148,23 +149,18 @@ class Game
   end
 
   def setup_game
-    maker = ''
-    breaker = if player1.role.match?(/breaker/)
-                    maker = self.player2
-                    self.player1
-                  else
-                    maker = self.player1
-                    self.player2
-                  end
+    maker, breaker = player1.role > player2.role ? [player1, player2] : [player2, player1]
     game.draw_board
-
-    if player2.type == 'non_player_character'
+    case player2.type
+    when 'non_player_character'
       game.generate_rand_code
       instructions
-    elsif player2.type == 'player_character'
+    when 'player_character'
       instructions
       puts "\n Pick the secret code #{maker.name}:\n"
       game.pass_maker_code(input_code(maker))
+    else
+      puts "\n Error. Player2 type does not correspond\n"
     end
     play_round(breaker)
   end
@@ -175,24 +171,23 @@ class Game
 
   def play_round(breaker)
     puts "\n Go ahead, #{breaker.name}, and guess the code:\n"
-    input_data= input_code(breaker)
+    input_data = input_code(breaker)
     attempt_data = game.attempt_break(input_data)
     check_win(breaker, attempt_data)
   end
 
   def input_code(current_player)
-    input = []
     retries = 2
     begin
       input = game.xpert_mode ? gets.chomp.match(/^[1-8]{5}$/)[0] : gets.chomp.match(/^[1-6]{4}$/)[0]
       input.split('').map(&:to_i)
-    rescue => exception
+    rescue StandardError => e
       if retries > 0
         puts "\n Beep Boop, erroneous input! Reiterate, please...\n"
         retries -= 1
         retry
       else
-        puts "\n Beep Boop, erroneous input! Your persistent passing of inaccurate code is exasperating!\n Therefor I will reassign the value of your name state. \n\n Just write down #{game.xpert_mode ? '5' : '4'} numbers between 1 and #{game.xpert_mode ? '8' : '6'}, #{current_player.name = "Nincompoop"}. \n Same numbers are allowed\n"
+        puts "\n Beep Boop, erroneous input! Your persistent passing of inaccurate code is exasperating!\n Therefor I will reassign the value of your name state. \n\n Just write down #{game.xpert_mode ? '5' : '4'} numbers between 1 and #{game.xpert_mode ? '8' : '6'}, #{current_player.name = 'Nincompoop'}. \n Same numbers are allowed\n"
         retry
       end
     end
@@ -217,7 +212,7 @@ class Game
   end
 end
 
-def setup_game
+def run_game
   puts "\n Want to test your mettle in a game of Mastermind? Y/n\n"
   return unless gets.chomp.match?(/y/i)
 
@@ -233,9 +228,10 @@ def setup_game
 end
 
 def reset_game(name1, name2 = false)
-  puts " Want to play again? Y/n"
+  puts ' Want to play again? Y/n'
   return unless gets.chomp.match?(/y/i)
   mastermind = Game.new(name1, name2)
+  name2 = mastermind.player2.name unless mastermind.player2.type == 'non_player_character'
   puts "\n Press enter to begin"
   gets.chomp
   mastermind.setup_game
