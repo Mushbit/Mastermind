@@ -1,6 +1,8 @@
 # Mastermind
 Old school Mastermind game played via the terminal
 
+https://replit.com/@Mushbit/Mastermind?v=1
+
 # Features
  - Two difficulties
  - Single and multiplayer 
